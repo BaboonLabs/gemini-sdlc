@@ -1,0 +1,6 @@
+description = "Syncs GitHub issues to Jira tickets"
+prompt = """
+1. List all open GitHub issues in the current repo.
+2. For any issue without a corresponding Jira ticket, create a new Jira story.
+3. Link the Jira story ID back to the GitHub issue comment.
+"""

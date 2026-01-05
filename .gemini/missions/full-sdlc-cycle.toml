@@ -1,0 +1,48 @@
+# .gemini/missions/full-sdlc-cycle.toml
+name = "Standard Feature Implementation"
+description = "End-to-end scaffolding, testing, and security audit"
+
+
+[agents.planner]
+role = "Product Owner"
+instructions = "Check Jira backlog for high priority items. Create a feature plan."
+tools = ["jira.search_issues", "jira.create_issue"]
+
+[agents.architect]
+role = "Scaffold Architect"
+instructions = "Generate the directory structure and boilerplate code based on the project plan."
+tools = ["gemini-sdlc.scaffold_component", "gemini-sdlc.run_command"]
+
+[agents.qa]
+role = "QA Specialist"
+instructions = "Wait for Architect to finish, then generate unit tests and execute them to verify the build."
+tools = ["gemini-sdlc.generate_test_cases", "gemini-sdlc.run_tests"]
+depends_on = "architect"
+
+[agents.security]
+role = "Security Auditor"
+instructions = "Scan all newly created files for style issues, TODOs, and potential vulnerabilities."
+tools = ["gemini-sdlc.analyze_code_quality"]
+run_parallel = true
+
+
+[agents.reviewer]
+role = "Code Reviewer"
+instructions = """
+1. Analyze the git diff of the current branch.
+2. Cross-reference changes against the 'styleguide.md' or 'GEMINI.md'.
+3. Flag critical logic errors or style violations.
+4. Prepare a 'review-report.md' for the developer.
+"""
+tools = ["gemini-sdlc.analyze_git_history", "gemini-sdlc.analyze_code_quality", "github.create_issue_comment"]
+depends_on = "architect"
+
+[agents.deployment]
+role = "Deployment Engineer"
+instructions = "Package the application for production. Generate Dockerfile, CI/CD pipelines, and Cloud Run configuration. When generating Cloud Run configurations, always use the europe-west1 region and ensure the service name is derived from the project folder name. Never include secrets in the YAML; reference them as environment variables to be populated by the CI/CD pipeline."
+tools = ["gemini-sdlc.generate_dockerfile", "gemini-sdlc.generate_github_actions", "gemini-sdlc.generate_cloud_run_config"]
+depends_on = ["qa", "security", "reviewer"]
+
+[artifacts]
+# Tangible deliverables tracked in Antigravity Mission Control
+paths = ["src/**", "tests/**", "security-report.json", "Dockerfile", ".github/**", "service.yaml"]

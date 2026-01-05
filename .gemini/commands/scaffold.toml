@@ -1,0 +1,8 @@
+description = "Spawns a Scaffold Architect agent in Antigravity"
+prompt = """
+1. Review the current project architecture and entity list.
+2. Spawn an Antigravity agent named 'Scaffold-Architect'.
+3. Pass the entities and the target language (TypeScript/Python/Go) as mission parameters.
+4. Instruct the agent to use the 'scaffold_component' and 'run_command' tools from the gemini-sdlc extension.
+5. Alert me when the file structure is complete.
+"""

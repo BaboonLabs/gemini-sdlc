@@ -1,0 +1,7 @@
+description = "Launches the full Architect/QA/Security team Mission in Antigravity"
+prompt = """
+1. Load the 'full-sdlc-cycle' Mission template.
+2. Initialize an Antigravity session with the current codebase as context.
+3. Distribute the project plan to the Architect, QA, and Security agents.
+4. Start the Mission and provide me with the Antigravity Mission Control URL.
+"""

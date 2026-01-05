@@ -1,0 +1,7 @@
+description = "Analyze a document and create a dev plan"
+prompt = """
+1. Use 'parse_requirements' on the provided document.
+2. Use 'analyze_codebase' to see where these requirements fit.
+3. Use 'create_project_plan' to output a 1-page roadmap.
+4. Ask me which Antigravity agent I want to spawn to start coding.
+"""

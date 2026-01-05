@@ -1,0 +1,8 @@
+description = "Initializes a cloned project for the SDLC Orchestrator"
+prompt = """
+1. Run 'analyze_codebase' to detect the tech stack.
+2. Create a local '.gemini/commands/' folder if it doesn't exist.
+3. Generate a 'GEMINI.md' file specifically for this project's context.
+4. Verify GitHub and Jira MCP connections.
+5. Identify if Antigravity agents need to be spawned for initial refactoring or cleanup.
+"""
