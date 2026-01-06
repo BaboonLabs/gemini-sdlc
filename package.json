@@ -1,0 +1,35 @@
+{
+  "name": "@baboonlabs/gemini-sdlc",
+  "version": "1.0.0",
+  "description": "SDLC Command Center - 30+ MCP tools for full software development lifecycle automation",
+  "main": "dist/index.js",
+  "bin": {
+    "gemini-sdlc": "dist/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["gemini", "mcp", "sdlc", "devops", "automation"],
+  "author": "BaboonLabs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BaboonLabs/gemini-sdlc"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": ["dist"]
+}
+

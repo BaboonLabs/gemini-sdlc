@@ -1,74 +1,129 @@
-# SDLC Command Center
+# gemini-sdlc
 
-> 🚀 30+ MCP tools for full software development lifecycle automation with Gemini CLI
+A Gemini CLI extension providing 22 tools for full software development lifecycle automation. Covers discovery, requirements, design, development, testing, deployment, monitoring, and maintenance phases.
 
 ## Installation
-
-### As Gemini Extension (Recommended)
 
 ```bash
 gemini extensions install https://github.com/BaboonLabs/gemini-sdlc
 ```
 
-### Manual Installation
+## Tools
 
-```bash
-# With uv (recommended)
-uvx --from git+https://github.com/BaboonLabs/gemini-sdlc gemini-sdlc
+### Discovery and Planning
 
-# Or pip
-pip install git+https://github.com/BaboonLabs/gemini-sdlc
-```
+| Tool | Description |
+|------|-------------|
+| `analyze_codebase` | Analyze project structure, languages, and file organization |
+| `estimate_effort` | Estimate development effort based on scope and complexity |
+| `create_project_plan` | Generate project plan template with milestones |
 
-## Features
+### Requirements
 
-### 8 Phases, 30+ Tools
+| Tool | Description |
+|------|-------------|
+| `parse_requirements` | Convert natural language requirements into structured user stories |
+| `generate_api_spec` | Generate OpenAPI-style specification for a resource |
 
-| Phase | Tools |
-|-------|-------|
-| **Discovery & Planning** | `analyze_codebase`, `estimate_effort`, `create_project_plan` |
-| **Requirements** | `parse_requirements`, `generate_api_spec` |
-| **Design** | `design_database_schema`, `generate_architecture_diagram` |
-| **Development** | `scaffold_component`, `run_command`, `analyze_dependencies` |
-| **Testing** | `generate_test_cases`, `run_tests`, `analyze_code_quality` |
-| **Deployment** | `generate_dockerfile`, `generate_github_actions`, `generate_cloud_run_config` |
-| **Monitoring** | `generate_logging_config`, `generate_health_check` |
-| **Maintenance** | `check_outdated_deps`, `generate_changelog`, `analyze_git_history` |
+### Design and Architecture
+
+| Tool | Description |
+|------|-------------|
+| `design_database_schema` | Generate database schema from entity descriptions |
+| `generate_architecture_diagram` | Create Mermaid architecture diagrams |
+
+### Development
+
+| Tool | Description |
+|------|-------------|
+| `scaffold_component` | Generate boilerplate code for services, controllers, models |
+| `run_command` | Execute shell commands and return output |
+| `analyze_dependencies` | Analyze project dependencies from package.json, requirements.txt |
+
+### Testing
+
+| Tool | Description |
+|------|-------------|
+| `generate_test_cases` | Generate test code for a function |
+| `run_tests` | Execute project tests and return results |
+| `analyze_code_quality` | Run static analysis and code quality checks |
+
+### Deployment
+
+| Tool | Description |
+|------|-------------|
+| `generate_dockerfile` | Create optimized Dockerfile for Python, Node, or Go projects |
+| `generate_github_actions` | Generate GitHub Actions CI/CD workflow |
+| `generate_cloud_run_config` | Generate Cloud Run service configuration |
+
+### Monitoring
+
+| Tool | Description |
+|------|-------------|
+| `generate_logging_config` | Generate structured logging configuration |
+| `generate_health_check` | Generate health check endpoint code |
+
+### Maintenance
+
+| Tool | Description |
+|------|-------------|
+| `check_outdated_deps` | Check for outdated dependencies |
+| `generate_changelog` | Generate changelog entry from a list of changes |
+| `analyze_git_history` | Analyze recent git commit history |
+
+### Utility
+
+| Tool | Description |
+|------|-------------|
+| `list_sdlc_tools` | List all available tools organized by phase |
 
 ## Usage Examples
 
+Analyze a codebase:
+
 ```
-> Analyze this codebase and estimate effort for adding user authentication
+Analyze the current project structure and summarize the tech stack
+```
 
-> Generate a REST API spec for a "products" resource
+Generate a Dockerfile:
 
-> Create a Dockerfile for this Python FastAPI app
+```
+Create a Dockerfile for this Node.js project
+```
 
-> Set up GitHub Actions CI/CD deploying to Cloud Run
+Set up CI/CD:
 
-> Generate test cases for the UserService class
+```
+Generate a GitHub Actions workflow for this Python project that deploys to Cloud Run
+```
+
+Create test cases:
+
+```
+Generate test cases for the UserService class
 ```
 
 ## Requirements
 
-- Python 3.10+
-- [uv](https://github.com/astral-sh/uv) (recommended) or pip
-- Gemini CLI
+- Gemini CLI v0.4.0 or later
+- Node.js 18 or later
 
 ## Development
 
+Clone and link for local development:
+
 ```bash
-# Clone
-git clone https://github.com/BaboonLabs/gemini-sdlc
+git clone https://github.com/BaboonLabs/gemini-sdlc.git
 cd gemini-sdlc
-
-# Install dependencies
-uv sync
-
-# Run locally
-uv run python -m src.server
+npm install
+npm run build
+gemini extensions link .
 ```
 
 ## License
 
-MIT © [Baboon Labs](https://baboonlabs.com)
+MIT
+
+## Author
+
+BaboonLabs

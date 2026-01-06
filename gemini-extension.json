@@ -1,13 +1,11 @@
 {
   "name": "gemini-sdlc",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "description": "SDLC Command Center - 30+ tools for full software development lifecycle automation",
   "mcpServers": {
     "gemini-sdlc": {
-      "command": "${extensionPath}/.venv/bin/python",
-      "args": [
-        "${extensionPath}/src/server.py"
-      ]
+      "command": "npx",
+      "args": ["-y", "@baboonlabs/gemini-sdlc@latest"]
     }
   },
   "contextFileName": "SDLC-ORCHESTRATOR.md"
