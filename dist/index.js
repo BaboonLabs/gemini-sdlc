@@ -15295,12 +15295,10 @@ function assignToAgent(task, projectPath = ".") {
 do shell script "open -a Antigravity '${absolutePath}'"
 delay 3
 tell application "System Events"
-    keystroke "i" using {command down, shift down}
+    keystroke "l" using command down
     delay 1
     keystroke "Read .antigravity/TASK.md and execute the task immediately"
     delay 0.3
-    keystroke return
-    delay 15
     keystroke return
 end tell
 `;
