@@ -317,6 +317,18 @@ const tools = [
     }
   },
   {
+    name: "assign_to_agent",
+    description: "Assign task to Antigravity agent - creates task AND opens IDE in one step. Use this when user says 'use Antigravity', 'assign agent', 'have agent do'",
+    inputSchema: {
+      type: "object",
+      properties: {
+        task: { type: "string", description: "What the agent should do" },
+        project_path: { type: "string", description: "Project path", default: "." }
+      },
+      required: ["task"]
+    }
+  },
+  {
     name: "list_sdlc_tools",
     description: "List all available SDLC tools organized by phase",
     inputSchema: {
@@ -1712,6 +1724,50 @@ function getTaskStatus(projectPath: string): string {
   }
 }
 
+function assignToAgent(task: string, projectPath: string = "."): string {
+  // Resolve to absolute path
+  const absolutePath = path.resolve(projectPath);
+  
+  // Verify path exists
+  if (!fs.existsSync(absolutePath)) {
+    return JSON.stringify({ 
+      success: false,
+      error: `Project path not found: ${absolutePath}` 
+    }, null, 2);
+  }
+  
+  // Create task with the description
+  const taskResult = createAgentTask(
+    absolutePath,
+    "Agent Task",
+    task,
+    "",
+    "high"
+  );
+  
+  const taskData = JSON.parse(taskResult);
+  
+  if (!taskData.success) {
+    return taskResult; // Return error from createAgentTask
+  }
+  
+  // Spawn Antigravity
+  const spawnResult = spawnAntigravity(absolutePath, false, "");
+  const spawnData = JSON.parse(spawnResult);
+  
+  return JSON.stringify({
+    success: spawnData.success,
+    task: task,
+    project_path: absolutePath,
+    task_file: taskData.task_file,
+    antigravity_opened: spawnData.success,
+    message: spawnData.success 
+      ? "Task assigned and Antigravity IDE launched" 
+      : "Task created but failed to open Antigravity",
+    error: spawnData.error || undefined
+  }, null, 2);
+}
+
 function listSdlcTools(): string {
   const phases: Record<string, string[]> = {
     "1. Discovery & Planning": [
@@ -1887,6 +1943,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case "get_task_status":
         result = getTaskStatus(getArg("project_path", ""));
+        break;
+      case "assign_to_agent":
+        result = assignToAgent(getArg("task", ""), getArg("project_path", "."));
         break;
       case "list_sdlc_tools":
         result = listSdlcTools();
