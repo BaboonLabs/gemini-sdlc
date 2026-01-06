@@ -15295,10 +15295,15 @@ function assignToAgent(task, projectPath = ".") {
 tell application "Antigravity" to activate
 delay 2
 tell application "System Events"
+    -- Open agent conversation
     keystroke "i" using {command down, shift down}
     delay 1
-    keystroke "Read .antigravity/TASK.md and execute the task described there"
+    -- Type task instruction
+    keystroke "Read .antigravity/TASK.md and execute the task immediately"
     delay 0.3
+    keystroke return
+    -- Wait for plan to generate, then proceed
+    delay 15
     keystroke return
 end tell
 `;
