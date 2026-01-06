@@ -13700,7 +13700,7 @@ var StdioServerTransport = class {
 };
 
 // src/index.ts
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 var server = new Server(
@@ -15307,7 +15307,8 @@ tell application "System Events"
     keystroke return
 end tell
 `;
-    execSync(`osascript -e '${script.replace(/'/g, "'\\''")}'`, { timeout: 15e3 });
+    const child = spawn("osascript", ["-e", script], { detached: true, stdio: "ignore" });
+    child.unref();
     return JSON.stringify({
       success: true,
       task,
@@ -15315,7 +15316,7 @@ end tell
       task_file: taskData.task_file,
       antigravity_opened: true,
       agent_triggered: true,
-      message: "Task assigned, Antigravity launched, and agent triggered automatically"
+      message: "Task assigned, Antigravity launching, and agent will be triggered automatically"
     }, null, 2);
   } catch (err) {
     return JSON.stringify({
