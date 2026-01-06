@@ -4,8 +4,8 @@
   "description": "SDLC Command Center - 30+ tools for full software development lifecycle automation",
   "mcpServers": {
     "gemini-sdlc": {
-      "command": "npx",
-      "args": ["-y", "@baboonlabs/gemini-sdlc@latest"]
+      "command": "node",
+      "args": ["${extensionPath}/dist/index.js"]
     }
   },
   "contextFileName": "SDLC-ORCHESTRATOR.md"
