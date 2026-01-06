@@ -8,5 +8,5 @@
       "args": ["${extensionPath}/dist/index.js"]
     }
   },
-  "contextFileName": "SDLC-ORCHESTRATOR.md"
+  "contextFileName": "GEMINI.md"
 }
