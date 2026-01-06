@@ -1755,12 +1755,17 @@ function assignToAgent(task: string, projectPath: string = "."): string {
   try {
     const script = `
 do shell script "open -a Antigravity '${absolutePath}'"
-delay 3
+delay 4
 tell application "System Events"
-    keystroke "l" using command down
-    delay 1
+    -- Clear any existing focus
+    key code 53
+    delay 0.5
+    -- Open agent conversation (Shift+Cmd+I)
+    keystroke "i" using {command down, shift down}
+    delay 2
+    -- Type task
     keystroke "Read .antigravity/TASK.md and execute the task immediately"
-    delay 0.3
+    delay 0.5
     keystroke return
 end tell
 `;
