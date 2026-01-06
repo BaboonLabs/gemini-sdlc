@@ -1751,21 +1751,43 @@ function assignToAgent(task: string, projectPath: string = "."): string {
     return taskResult; // Return error from createAgentTask
   }
   
-  // Spawn Antigravity
-  const spawnResult = spawnAntigravity(absolutePath, false, "");
-  const spawnData = JSON.parse(spawnResult);
-  
-  return JSON.stringify({
-    success: spawnData.success,
-    task: task,
-    project_path: absolutePath,
-    task_file: taskData.task_file,
-    antigravity_opened: spawnData.success,
-    message: spawnData.success 
-      ? "Task assigned and Antigravity IDE launched" 
-      : "Task created but failed to open Antigravity",
-    error: spawnData.error || undefined
-  }, null, 2);
+  // Open Antigravity and automatically trigger agent
+  try {
+    const script = `
+tell application "Antigravity" to activate
+delay 2
+tell application "System Events"
+    keystroke "i" using {command down, shift down}
+    delay 1
+    keystroke "Read .antigravity/TASK.md and execute the task described there"
+    delay 0.3
+    keystroke return
+end tell
+`;
+    
+    execSync(`osascript -e '${script.replace(/'/g, "'\\''")}'`, { timeout: 15000 });
+    
+    return JSON.stringify({
+      success: true,
+      task: task,
+      project_path: absolutePath,
+      task_file: taskData.task_file,
+      antigravity_opened: true,
+      agent_triggered: true,
+      message: "Task assigned, Antigravity launched, and agent triggered automatically"
+    }, null, 2);
+  } catch (err: any) {
+    return JSON.stringify({
+      success: false,
+      task: task,
+      project_path: absolutePath,
+      task_file: taskData.task_file,
+      antigravity_opened: false,
+      agent_triggered: false,
+      error: err.message || String(err),
+      message: "Task created but failed to open Antigravity or trigger agent"
+    }, null, 2);
+  }
 }
 
 function listSdlcTools(): string {
