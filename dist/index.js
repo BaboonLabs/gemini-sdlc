@@ -13608,7 +13608,7 @@ var Server = class extends Protocol {
 };
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
-import process from "node:process";
+import process2 from "node:process";
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js
 var ReadBuffer = class {
@@ -13640,7 +13640,7 @@ function serializeMessage(message) {
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
 var StdioServerTransport = class {
-  constructor(_stdin = process.stdin, _stdout = process.stdout) {
+  constructor(_stdin = process2.stdin, _stdout = process2.stdout) {
     this._stdin = _stdin;
     this._stdout = _stdout;
     this._readBuffer = new ReadBuffer();
@@ -13704,7 +13704,7 @@ import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 var server = new Server(
-  { name: "gemini-sdlc", version: "3.0.0" },
+  { name: "gemini-sdlc", version: "3.1.0" },
   { capabilities: { tools: {} } }
 );
 var tools = [
@@ -13954,6 +13954,56 @@ var tools = [
         path: { type: "string", description: "Path to git repository", default: "." },
         days: { type: "number", description: "Number of days to look back", default: 30 }
       }
+    }
+  },
+  {
+    name: "create_agent_task",
+    description: "Create a task file for an Antigravity IDE agent to execute",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_path: { type: "string", description: "Path to the project directory" },
+        task_title: { type: "string", description: "Short title for the task" },
+        task_description: { type: "string", description: "Detailed description of what the agent should do" },
+        acceptance_criteria: { type: "string", description: "Comma-separated list of acceptance criteria", default: "" },
+        priority: { type: "string", description: "low, medium, high, critical", default: "medium" }
+      },
+      required: ["project_path", "task_title", "task_description"]
+    }
+  },
+  {
+    name: "spawn_antigravity",
+    description: "Open Antigravity IDE with a specific project folder",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_path: { type: "string", description: "Path to the project directory" },
+        create_task: { type: "boolean", description: "Whether to create a task file first", default: false },
+        task_description: { type: "string", description: "Task description if create_task is true", default: "" }
+      },
+      required: ["project_path"]
+    }
+  },
+  {
+    name: "list_agent_tasks",
+    description: "List all Antigravity agent tasks, optionally filtered by project",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_path: { type: "string", description: "Optional: specific project to check", default: "" },
+        status_filter: { type: "string", description: "Filter by status: all, pending, in_progress, completed", default: "all" }
+      }
+    }
+  },
+  {
+    name: "get_task_status",
+    description: "Get the status of an Antigravity agent task",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_path: { type: "string", description: "Path to the project directory" }
+      },
+      required: ["project_path"]
     }
   },
   {
@@ -15062,6 +15112,153 @@ function analyzeGitHistory(targetPath = ".", days = 30) {
     return JSON.stringify({ error: String(err) }, null, 2);
   }
 }
+function createAgentTask(projectPath, taskTitle, taskDescription, acceptanceCriteria = "", priority = "medium") {
+  const antigravityDir = path.join(projectPath, ".antigravity");
+  const taskFile = path.join(antigravityDir, "TASK.md");
+  if (!fs.existsSync(antigravityDir)) {
+    fs.mkdirSync(antigravityDir, { recursive: true });
+  }
+  const criteria = acceptanceCriteria ? acceptanceCriteria.split(",").map((c) => `- [ ] ${c.trim()}`).join("\n") : "- [ ] Implementation complete\n- [ ] Tests pass";
+  const content = `# Agent Task: ${taskTitle}
+
+**Status:** pending
+**Priority:** ${priority}
+**Created:** ${(/* @__PURE__ */ new Date()).toISOString()}
+**Assigned by:** Gemini CLI Orchestrator
+
+## Description
+${taskDescription}
+
+## Acceptance Criteria
+${criteria}
+
+## Instructions
+1. Read this task carefully
+2. Implement the changes described above
+3. Run tests to verify the implementation
+4. When complete, update Status to "completed" and add a summary below
+
+## Completion Summary
+<!-- Agent will fill this in when done -->
+`;
+  fs.writeFileSync(taskFile, content);
+  return JSON.stringify({
+    success: true,
+    task_file: taskFile,
+    task_title: taskTitle,
+    status: "pending",
+    message: "Task created. Open project in Antigravity to execute."
+  }, null, 2);
+}
+function spawnAntigravity(projectPath, createTask = false, taskDescription = "") {
+  if (!fs.existsSync(projectPath)) {
+    return JSON.stringify({ error: `Path not found: ${projectPath}` }, null, 2);
+  }
+  if (createTask && taskDescription) {
+    createAgentTask(projectPath, "Gemini Task", taskDescription);
+  }
+  try {
+    execSync(`open -a Antigravity "${projectPath}"`, { timeout: 1e4 });
+    return JSON.stringify({
+      success: true,
+      project_path: projectPath,
+      message: "Antigravity IDE opened with project",
+      task_created: createTask && !!taskDescription
+    }, null, 2);
+  } catch (err) {
+    return JSON.stringify({
+      success: false,
+      error: err.message || String(err)
+    }, null, 2);
+  }
+}
+function listAgentTasks(projectPath = "", statusFilter = "all") {
+  const tasks = [];
+  const checkProject = (projPath) => {
+    const taskFile = path.join(projPath, ".antigravity", "TASK.md");
+    if (fs.existsSync(taskFile)) {
+      try {
+        const content = fs.readFileSync(taskFile, "utf8");
+        const statusMatch = content.match(/\*\*Status:\*\*\s*(\w+)/);
+        const status = statusMatch ? statusMatch[1] : "unknown";
+        const titleMatch = content.match(/# Agent Task:\s*(.+)/);
+        const title = titleMatch ? titleMatch[1] : "Unknown Task";
+        const createdMatch = content.match(/\*\*Created:\*\*\s*(.+)/);
+        const created = createdMatch ? createdMatch[1] : "";
+        const priorityMatch = content.match(/\*\*Priority:\*\*\s*(\w+)/);
+        const priority = priorityMatch ? priorityMatch[1] : "medium";
+        if (statusFilter === "all" || status === statusFilter) {
+          tasks.push({
+            project: projPath,
+            title,
+            status,
+            priority,
+            created,
+            task_file: taskFile
+          });
+        }
+      } catch (err) {
+      }
+    }
+  };
+  if (projectPath) {
+    checkProject(projectPath);
+  } else {
+    const homeDir = process.env.HOME || "";
+    const codeDir = path.join(homeDir, "code");
+    if (fs.existsSync(codeDir)) {
+      const projects = fs.readdirSync(codeDir, { withFileTypes: true });
+      for (const proj of projects) {
+        if (proj.isDirectory()) {
+          checkProject(path.join(codeDir, proj.name));
+        }
+      }
+    }
+  }
+  return JSON.stringify({
+    total_tasks: tasks.length,
+    filter: statusFilter,
+    tasks
+  }, null, 2);
+}
+function getTaskStatus(projectPath) {
+  const taskFile = path.join(projectPath, ".antigravity", "TASK.md");
+  if (!fs.existsSync(taskFile)) {
+    return JSON.stringify({
+      exists: false,
+      error: "No task file found in project"
+    }, null, 2);
+  }
+  try {
+    const content = fs.readFileSync(taskFile, "utf8");
+    const statusMatch = content.match(/\*\*Status:\*\*\s*(\w+)/);
+    const titleMatch = content.match(/# Agent Task:\s*(.+)/);
+    const createdMatch = content.match(/\*\*Created:\*\*\s*(.+)/);
+    const priorityMatch = content.match(/\*\*Priority:\*\*\s*(\w+)/);
+    const summaryMatch = content.match(/## Completion Summary\n([\s\S]*?)(?=\n##|$)/);
+    const summary = summaryMatch ? summaryMatch[1].replace(/<!--.*?-->/g, "").trim() : "";
+    const criteriaTotal = (content.match(/- \[[ x]\]/g) || []).length;
+    const criteriaComplete = (content.match(/- \[x\]/gi) || []).length;
+    return JSON.stringify({
+      exists: true,
+      project: projectPath,
+      title: titleMatch ? titleMatch[1] : "Unknown",
+      status: statusMatch ? statusMatch[1] : "unknown",
+      priority: priorityMatch ? priorityMatch[1] : "medium",
+      created: createdMatch ? createdMatch[1] : "",
+      acceptance_criteria: {
+        total: criteriaTotal,
+        completed: criteriaComplete
+      },
+      completion_summary: summary || null
+    }, null, 2);
+  } catch (err) {
+    return JSON.stringify({
+      exists: true,
+      error: err.message || String(err)
+    }, null, 2);
+  }
+}
 function listSdlcTools() {
   const phases = {
     "1. Discovery & Planning": [
@@ -15100,6 +15297,12 @@ function listSdlcTools() {
       "check_outdated_deps - Find outdated packages",
       "generate_changelog - Create changelog entries",
       "analyze_git_history - Git commit analysis"
+    ],
+    "9. Agent Orchestration": [
+      "create_agent_task - Create a task for Antigravity IDE agent",
+      "spawn_antigravity - Open Antigravity IDE with a project",
+      "list_agent_tasks - List all agent tasks",
+      "get_task_status - Check task completion status"
     ]
   };
   const totalTools = Object.values(phases).reduce((sum, tools2) => sum + tools2.length, 0);
@@ -15196,6 +15399,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case "analyze_git_history":
         result = analyzeGitHistory(getArg("path", "."), getArgNumber("days", 30));
+        break;
+      case "create_agent_task":
+        result = createAgentTask(
+          getArg("project_path", ""),
+          getArg("task_title", ""),
+          getArg("task_description", ""),
+          getArg("acceptance_criteria", ""),
+          getArg("priority", "medium")
+        );
+        break;
+      case "spawn_antigravity":
+        result = spawnAntigravity(
+          getArg("project_path", ""),
+          args && typeof args === "object" && "create_task" in args ? Boolean(args.create_task) : false,
+          getArg("task_description", "")
+        );
+        break;
+      case "list_agent_tasks":
+        result = listAgentTasks(getArg("project_path", ""), getArg("status_filter", "all"));
+        break;
+      case "get_task_status":
+        result = getTaskStatus(getArg("project_path", ""));
         break;
       case "list_sdlc_tools":
         result = listSdlcTools();

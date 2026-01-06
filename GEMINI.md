@@ -67,6 +67,14 @@ Use the SDLC tools when the user needs to:
 | `generate_changelog` | User needs changelog entry from a list of changes |
 | `analyze_git_history` | User wants to review recent commit history |
 
+### Phase 9: Agent Orchestration
+| Tool | Use When |
+|------|----------|
+| `create_agent_task` | User wants to assign a task to an autonomous IDE agent |
+| `spawn_antigravity` | User wants to open a project in the Antigravity IDE |
+| `list_agent_tasks` | User wants to see all active agent tasks |
+| `get_task_status` | User wants to check progress of a specific agent task |
+
 ## Usage Patterns
 
 ### New Project Setup

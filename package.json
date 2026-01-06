@@ -1,6 +1,6 @@
 {
   "name": "@baboonlabs/gemini-sdlc",
-  "version": "1.0.0",
+  "version": "3.1.0",
   "description": "SDLC Command Center - 30+ MCP tools for full software development lifecycle automation",
   "main": "dist/index.js",
   "bin": {

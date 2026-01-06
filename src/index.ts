@@ -9,7 +9,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const server = new Server(
-  { name: "gemini-sdlc", version: "3.0.0" },
+  { name: "gemini-sdlc", version: "3.1.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -267,6 +267,56 @@ const tools = [
     }
   },
   {
+    name: "create_agent_task",
+    description: "Create a task file for an Antigravity IDE agent to execute",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_path: { type: "string", description: "Path to the project directory" },
+        task_title: { type: "string", description: "Short title for the task" },
+        task_description: { type: "string", description: "Detailed description of what the agent should do" },
+        acceptance_criteria: { type: "string", description: "Comma-separated list of acceptance criteria", default: "" },
+        priority: { type: "string", description: "low, medium, high, critical", default: "medium" }
+      },
+      required: ["project_path", "task_title", "task_description"]
+    }
+  },
+  {
+    name: "spawn_antigravity",
+    description: "Open Antigravity IDE with a specific project folder",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_path: { type: "string", description: "Path to the project directory" },
+        create_task: { type: "boolean", description: "Whether to create a task file first", default: false },
+        task_description: { type: "string", description: "Task description if create_task is true", default: "" }
+      },
+      required: ["project_path"]
+    }
+  },
+  {
+    name: "list_agent_tasks",
+    description: "List all Antigravity agent tasks, optionally filtered by project",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_path: { type: "string", description: "Optional: specific project to check", default: "" },
+        status_filter: { type: "string", description: "Filter by status: all, pending, in_progress, completed", default: "all" }
+      }
+    }
+  },
+  {
+    name: "get_task_status",
+    description: "Get the status of an Antigravity agent task",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_path: { type: "string", description: "Path to the project directory" }
+      },
+      required: ["project_path"]
+    }
+  },
+  {
     name: "list_sdlc_tools",
     description: "List all available SDLC tools organized by phase",
     inputSchema: {
@@ -282,7 +332,7 @@ const tools = [
 
 function analyzeCodebase(targetPath: string): string {
   const result: any = { path: targetPath, languages: {}, files: 0, dirs: 0, structure: [] };
-  
+
   const extensions: Record<string, string> = {
     ".py": "Python", ".js": "JavaScript", ".ts": "TypeScript",
     ".go": "Go", ".rs": "Rust", ".java": "Java", ".rb": "Ruby",
@@ -292,21 +342,21 @@ function analyzeCodebase(targetPath: string): string {
     ".json": "JSON", ".yaml": "YAML", ".yml": "YAML",
     ".md": "Markdown", ".sql": "SQL", ".sh": "Shell"
   };
-  
-  const ignoreDirs = new Set([".git", "node_modules", "__pycache__", ".venv", "venv", 
-                               "dist", "build", ".next", "target", "vendor"]);
-  
+
+  const ignoreDirs = new Set([".git", "node_modules", "__pycache__", ".venv", "venv",
+    "dist", "build", ".next", "target", "vendor"]);
+
   function walkDir(dirPath: string): void {
     try {
       const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-      
+
       for (const entry of entries) {
         if (ignoreDirs.has(entry.name) || entry.name.startsWith(".")) {
           continue;
         }
-        
+
         const fullPath = path.join(dirPath, entry.name);
-        
+
         if (entry.isDirectory()) {
           result.dirs += 1;
           walkDir(fullPath);
@@ -323,9 +373,9 @@ function analyzeCodebase(targetPath: string): string {
       // Ignore permission errors
     }
   }
-  
+
   walkDir(targetPath);
-  
+
   // Get top-level structure
   try {
     const items = fs.readdirSync(targetPath, { withFileTypes: true });
@@ -338,17 +388,17 @@ function analyzeCodebase(targetPath: string): string {
   } catch (err: any) {
     result.error = String(err);
   }
-  
+
   return JSON.stringify(result, null, 2);
 }
 
 function estimateEffort(scope: string, complexity: string = "medium"): string {
   const multipliers: Record<string, number> = { low: 0.5, medium: 1.0, high: 2.0, very_high: 3.5 };
   const baseHours = scope.split(/\s+/).length * 2;
-  
+
   const mult = multipliers[complexity.toLowerCase()] || 1.0;
   const estimated = Math.floor(baseHours * mult);
-  
+
   return JSON.stringify({
     scope_summary: scope.substring(0, 200),
     complexity: complexity,
@@ -372,7 +422,7 @@ function createProjectPlan(name: string, description: string, phases?: string): 
     { phase: "Testing", duration: "1 week", deliverables: ["Integration tests", "Bug fixes", "Performance tuning"] },
     { phase: "Deployment", duration: "1 week", deliverables: ["CI/CD setup", "Staging deploy", "Production release"] }
   ];
-  
+
   return JSON.stringify({
     project: name,
     description: description,
@@ -390,7 +440,7 @@ function createProjectPlan(name: string, description: string, phases?: string): 
 function parseRequirements(text: string): string {
   const lines = text.split("\n").map(l => l.trim()).filter(l => l);
   const stories: any[] = [];
-  
+
   for (let i = 0; i < lines.length; i++) {
     const story = {
       id: `US-${String(i + 1).padStart(3, "0")}`,
@@ -406,7 +456,7 @@ function parseRequirements(text: string): string {
     };
     stories.push(story);
   }
-  
+
   return JSON.stringify({
     total_stories: stories.length,
     stories: stories,
@@ -422,13 +472,13 @@ function parseRequirements(text: string): string {
 function generateApiSpec(resource: string, operations: string = "crud"): string {
   const resourceSingular = resource.replace(/s$/, "");
   const basePath = `/api/${resource}`;
-  
-  const ops = operations === "crud" 
+
+  const ops = operations === "crud"
     ? ["create", "read", "update", "delete"]
     : operations.split(",").map(o => o.trim());
-  
+
   const endpoints: any[] = [];
-  
+
   if (ops.includes("create")) {
     endpoints.push({
       method: "POST",
@@ -469,7 +519,7 @@ function generateApiSpec(resource: string, operations: string = "crud"): string 
       responses: { "204": "Deleted", "404": "Not found" }
     });
   }
-  
+
   return JSON.stringify({
     resource: resource,
     base_path: basePath,
@@ -485,7 +535,7 @@ function generateApiSpec(resource: string, operations: string = "crud"): string 
 function designDatabaseSchema(entities: string, databaseType: string = "postgresql"): string {
   const entityList = entities.split(",").map(e => e.trim());
   const schemas: any = {};
-  
+
   for (const entity of entityList) {
     const singular = entity.replace(/s$/, "");
     schemas[entity] = {
@@ -500,7 +550,7 @@ function designDatabaseSchema(entities: string, databaseType: string = "postgres
       relationships: []
     };
   }
-  
+
   return JSON.stringify({
     database_type: databaseType,
     schemas: schemas,
@@ -517,7 +567,7 @@ function generateArchitectureDiagram(components: string, style: string = "micros
   const compList = components.split(",").map(c => c.trim());
   const mermaid: string[] = ["graph TB"];
   mermaid.push("    Client[Client/Browser]");
-  
+
   if (style === "microservices") {
     mermaid.push("    Gateway[API Gateway]");
     mermaid.push("    Client --> Gateway");
@@ -544,7 +594,7 @@ function generateArchitectureDiagram(components: string, style: string = "micros
       mermaid.push(`    APIGW --> ${safeName}`);
     }
   }
-  
+
   return JSON.stringify({
     style: style,
     components: compList,
@@ -696,10 +746,10 @@ func (h *Handler) GetAll(c *gin.Context) {
 `
     }
   };
-  
+
   const code = templates[language]?.[componentType] || "// Template not found";
   const ext = language === "typescript" ? "ts" : language === "python" ? "py" : "go";
-  
+
   return JSON.stringify({
     name: name,
     type: componentType,
@@ -717,7 +767,7 @@ function runCommand(command: string, cwd: string = "."): string {
       maxBuffer: 10 * 1024 * 1024,
       timeout: 60000
     });
-    
+
     return JSON.stringify({
       command: command,
       returncode: 0,
@@ -729,11 +779,11 @@ function runCommand(command: string, cwd: string = "."): string {
     const stdout = err.stdout?.toString().substring(0, 5000) || "";
     const stderr = err.stderr?.toString().substring(0, 2000) || "";
     const returncode = err.status || err.code || 1;
-    
+
     if (err.signal === "SIGTERM") {
       return JSON.stringify({ error: "Command timed out after 60 seconds" }, null, 2);
     }
-    
+
     return JSON.stringify({
       command: command,
       returncode: returncode,
@@ -746,7 +796,7 @@ function runCommand(command: string, cwd: string = "."): string {
 
 function analyzeDependencies(targetPath: string = "."): string {
   const deps: any = { detected_managers: [], dependencies: {} };
-  
+
   // Check package.json
   const pkgJson = path.join(targetPath, "package.json");
   if (fs.existsSync(pkgJson)) {
@@ -761,7 +811,7 @@ function analyzeDependencies(targetPath: string = "."): string {
       deps.dependencies.npm = { error: String(err) };
     }
   }
-  
+
   // Check requirements.txt
   const reqTxt = path.join(targetPath, "requirements.txt");
   if (fs.existsSync(reqTxt)) {
@@ -777,19 +827,19 @@ function analyzeDependencies(targetPath: string = "."): string {
       deps.dependencies.pip = { error: String(err) };
     }
   }
-  
+
   // Check pyproject.toml
   const pyproject = path.join(targetPath, "pyproject.toml");
   if (fs.existsSync(pyproject)) {
     deps.detected_managers.push("uv/poetry");
   }
-  
+
   // Check go.mod
   const goMod = path.join(targetPath, "go.mod");
   if (fs.existsSync(goMod)) {
     deps.detected_managers.push("go");
   }
-  
+
   return JSON.stringify(deps, null, 2);
 }
 
@@ -875,9 +925,9 @@ func Test${functionName.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(
 }
 `
   };
-  
+
   const ext = language === "typescript" ? "ts" : language === "python" ? "py" : "go";
-  
+
   return JSON.stringify({
     function: functionName,
     description: functionDescription,
@@ -896,9 +946,9 @@ function runTests(testCommand: string = "npm test", targetPath: string = "."): s
       maxBuffer: 10 * 1024 * 1024,
       timeout: 300000
     } as any);
-    
+
     const output = result;
-    
+
     return JSON.stringify({
       command: testCommand,
       success: true,
@@ -910,9 +960,9 @@ function runTests(testCommand: string = "npm test", targetPath: string = "."): s
     if (err.signal === "SIGTERM") {
       return JSON.stringify({ error: "Tests timed out after 5 minutes" }, null, 2);
     }
-    
+
     const output = (err.stdout?.toString() || "") + (err.stderr?.toString() || "");
-    
+
     return JSON.stringify({
       command: testCommand,
       success: false,
@@ -925,30 +975,30 @@ function runTests(testCommand: string = "npm test", targetPath: string = "."): s
 
 function analyzeCodeQuality(targetPath: string = ".", language: string = "auto"): string {
   const issues: any[] = [];
-  
+
   // Detect language if auto
   if (language === "auto") {
     if (fs.existsSync(path.join(targetPath, "package.json"))) {
       language = "typescript";
-    } else if (fs.existsSync(path.join(targetPath, "requirements.txt")) || 
-               fs.existsSync(path.join(targetPath, "pyproject.toml"))) {
+    } else if (fs.existsSync(path.join(targetPath, "requirements.txt")) ||
+      fs.existsSync(path.join(targetPath, "pyproject.toml"))) {
       language = "python";
     } else if (fs.existsSync(path.join(targetPath, "go.mod"))) {
       language = "go";
     }
   }
-  
+
   function walkDir(dirPath: string): void {
     try {
       const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-      
+
       for (const entry of entries) {
         if ([".git", "node_modules", "__pycache__", "venv"].some(x => dirPath.includes(x))) {
           continue;
         }
-        
+
         const fullPath = path.join(dirPath, entry.name);
-        
+
         if (entry.isDirectory()) {
           walkDir(fullPath);
         } else if (entry.isFile()) {
@@ -956,15 +1006,15 @@ function analyzeCodeQuality(targetPath: string = ".", language: string = "auto")
           if (![".py", ".ts", ".js", ".go"].includes(ext)) {
             continue;
           }
-          
+
           try {
             const content = fs.readFileSync(fullPath, "utf8");
             const lines = content.split("\n");
-            
+
             for (let i = 0; i < lines.length; i++) {
               const line = lines[i];
               const lineNum = i + 1;
-              
+
               if (line.includes("TODO") || line.includes("FIXME")) {
                 issues.push({
                   file: fullPath,
@@ -1007,9 +1057,9 @@ function analyzeCodeQuality(targetPath: string = ".", language: string = "auto")
       // Ignore permission errors
     }
   }
-  
+
   walkDir(targetPath);
-  
+
   return JSON.stringify({
     path: targetPath,
     language: language,
@@ -1071,7 +1121,7 @@ EXPOSE ${port}
 CMD ["./server"]
 `
   };
-  
+
   return JSON.stringify({
     language: language,
     framework: framework,
@@ -1157,7 +1207,7 @@ jobs:
           source: .
 `
   };
-  
+
   return JSON.stringify({
     language: language,
     deploy_target: deployTarget,
@@ -1198,7 +1248,7 @@ spec:
             - name: NODE_ENV
               value: production
 `;
-  
+
   return JSON.stringify({
     service_name: serviceName,
     filename: "service.yaml",
@@ -1253,7 +1303,7 @@ export const logger = pino({
 // logger.error({ err }, 'Operation failed');
 `
   };
-  
+
   return JSON.stringify({
     language: language,
     log_level: logLevel,
@@ -1328,7 +1378,7 @@ router.get('/health/ready', async (req, res) => {
 export default router;
 `
   };
-  
+
   return JSON.stringify({
     language: language,
     endpoints: ["/health", "/health/ready"],
@@ -1338,7 +1388,7 @@ export default router;
 
 function checkOutdatedDeps(targetPath: string = "."): string {
   const results: any = { path: targetPath, package_managers: [] };
-  
+
   // Check npm
   if (fs.existsSync(path.join(targetPath, "package.json"))) {
     try {
@@ -1348,7 +1398,7 @@ function checkOutdatedDeps(targetPath: string = "."): string {
         maxBuffer: 10 * 1024 * 1024,
         timeout: 60000
       } as any);
-      
+
       if (result.trim()) {
         results.package_managers.push({
           manager: "npm",
@@ -1367,7 +1417,7 @@ function checkOutdatedDeps(targetPath: string = "."): string {
       });
     }
   }
-  
+
   // Check pip
   if (fs.existsSync(path.join(targetPath, "requirements.txt"))) {
     results.package_managers.push({
@@ -1375,7 +1425,7 @@ function checkOutdatedDeps(targetPath: string = "."): string {
       command: "pip list --outdated --format=json"
     });
   }
-  
+
   return JSON.stringify(results, null, 2);
 }
 
@@ -1383,12 +1433,12 @@ function generateChangelog(version: string, changes: string, date: string = ""):
   if (!date) {
     date = new Date().toISOString().split("T")[0];
   }
-  
+
   const changeList = changes.split("\n").map(c => c.trim()).filter(c => c);
-  
+
   // Categorize changes
   const categories: Record<string, string[]> = { added: [], changed: [], fixed: [], removed: [] };
-  
+
   for (const change of changeList) {
     const lower = change.toLowerCase();
     if (["add", "new", "create", "implement"].some(x => lower.includes(x))) {
@@ -1401,10 +1451,10 @@ function generateChangelog(version: string, changes: string, date: string = ""):
       categories.changed.push(change);
     }
   }
-  
+
   // Generate markdown
   const md: string[] = [`## [${version}] - ${date}\n`];
-  
+
   for (const [cat, items] of Object.entries(categories)) {
     if (items.length > 0) {
       md.push(`### ${cat.charAt(0).toUpperCase() + cat.slice(1)}`);
@@ -1414,7 +1464,7 @@ function generateChangelog(version: string, changes: string, date: string = ""):
       md.push("");
     }
   }
-  
+
   return JSON.stringify({
     version: version,
     date: date,
@@ -1434,11 +1484,11 @@ function analyzeGitHistory(targetPath: string = ".", days: number = 30): string 
         timeout: 30000
       } as any
     );
-    
+
     const lines = result.trim().split("\n");
     const commits: any[] = [];
     const authors: Record<string, number> = {};
-    
+
     for (const line of lines) {
       if (line.includes("|")) {
         const parts = line.split("|");
@@ -1449,7 +1499,7 @@ function analyzeGitHistory(targetPath: string = ".", days: number = 30): string 
         }
       }
     }
-    
+
     return JSON.stringify({
       path: targetPath,
       period_days: days,
@@ -1459,6 +1509,206 @@ function analyzeGitHistory(targetPath: string = ".", days: number = 30): string 
     }, null, 2);
   } catch (err: any) {
     return JSON.stringify({ error: String(err) }, null, 2);
+  }
+}
+
+function createAgentTask(
+  projectPath: string,
+  taskTitle: string,
+  taskDescription: string,
+  acceptanceCriteria: string = "",
+  priority: string = "medium"
+): string {
+  const antigravityDir = path.join(projectPath, ".antigravity");
+  const taskFile = path.join(antigravityDir, "TASK.md");
+
+  // Create directory if needed
+  if (!fs.existsSync(antigravityDir)) {
+    fs.mkdirSync(antigravityDir, { recursive: true });
+  }
+
+  // Parse acceptance criteria
+  const criteria = acceptanceCriteria
+    ? acceptanceCriteria.split(",").map(c => `- [ ] ${c.trim()}`).join("\n")
+    : "- [ ] Implementation complete\n- [ ] Tests pass";
+
+  const content = `# Agent Task: ${taskTitle}
+
+**Status:** pending
+**Priority:** ${priority}
+**Created:** ${new Date().toISOString()}
+**Assigned by:** Gemini CLI Orchestrator
+
+## Description
+${taskDescription}
+
+## Acceptance Criteria
+${criteria}
+
+## Instructions
+1. Read this task carefully
+2. Implement the changes described above
+3. Run tests to verify the implementation
+4. When complete, update Status to "completed" and add a summary below
+
+## Completion Summary
+<!-- Agent will fill this in when done -->
+`;
+
+  fs.writeFileSync(taskFile, content);
+
+  return JSON.stringify({
+    success: true,
+    task_file: taskFile,
+    task_title: taskTitle,
+    status: "pending",
+    message: "Task created. Open project in Antigravity to execute."
+  }, null, 2);
+}
+
+function spawnAntigravity(
+  projectPath: string,
+  createTask: boolean = false,
+  taskDescription: string = ""
+): string {
+  // Verify path exists
+  if (!fs.existsSync(projectPath)) {
+    return JSON.stringify({ error: `Path not found: ${projectPath}` }, null, 2);
+  }
+
+  // Create task if requested
+  if (createTask && taskDescription) {
+    createAgentTask(projectPath, "Gemini Task", taskDescription);
+  }
+
+  try {
+    execSync(`open -a Antigravity "${projectPath}"`, { timeout: 10000 });
+
+    return JSON.stringify({
+      success: true,
+      project_path: projectPath,
+      message: "Antigravity IDE opened with project",
+      task_created: createTask && !!taskDescription
+    }, null, 2);
+  } catch (err: any) {
+    return JSON.stringify({
+      success: false,
+      error: err.message || String(err)
+    }, null, 2);
+  }
+}
+
+function listAgentTasks(projectPath: string = "", statusFilter: string = "all"): string {
+  const tasks: any[] = [];
+
+  const checkProject = (projPath: string) => {
+    const taskFile = path.join(projPath, ".antigravity", "TASK.md");
+    if (fs.existsSync(taskFile)) {
+      try {
+        const content = fs.readFileSync(taskFile, "utf8");
+
+        // Parse status
+        const statusMatch = content.match(/\*\*Status:\*\*\s*(\w+)/);
+        const status = statusMatch ? statusMatch[1] : "unknown";
+
+        // Parse title
+        const titleMatch = content.match(/# Agent Task:\s*(.+)/);
+        const title = titleMatch ? titleMatch[1] : "Unknown Task";
+
+        // Parse created date
+        const createdMatch = content.match(/\*\*Created:\*\*\s*(.+)/);
+        const created = createdMatch ? createdMatch[1] : "";
+
+        // Parse priority
+        const priorityMatch = content.match(/\*\*Priority:\*\*\s*(\w+)/);
+        const priority = priorityMatch ? priorityMatch[1] : "medium";
+
+        if (statusFilter === "all" || status === statusFilter) {
+          tasks.push({
+            project: projPath,
+            title: title,
+            status: status,
+            priority: priority,
+            created: created,
+            task_file: taskFile
+          });
+        }
+      } catch (err) {
+        // Ignore parse errors
+      }
+    }
+  };
+
+  if (projectPath) {
+    checkProject(projectPath);
+  } else {
+    // Check common project directories
+    const homeDir = process.env.HOME || "";
+    const codeDir = path.join(homeDir, "code");
+    if (fs.existsSync(codeDir)) {
+      const projects = fs.readdirSync(codeDir, { withFileTypes: true });
+      for (const proj of projects) {
+        if (proj.isDirectory()) {
+          checkProject(path.join(codeDir, proj.name));
+        }
+      }
+    }
+  }
+
+  return JSON.stringify({
+    total_tasks: tasks.length,
+    filter: statusFilter,
+    tasks: tasks
+  }, null, 2);
+}
+
+function getTaskStatus(projectPath: string): string {
+  const taskFile = path.join(projectPath, ".antigravity", "TASK.md");
+
+  if (!fs.existsSync(taskFile)) {
+    return JSON.stringify({
+      exists: false,
+      error: "No task file found in project"
+    }, null, 2);
+  }
+
+  try {
+    const content = fs.readFileSync(taskFile, "utf8");
+
+    // Parse all fields
+    const statusMatch = content.match(/\*\*Status:\*\*\s*(\w+)/);
+    const titleMatch = content.match(/# Agent Task:\s*(.+)/);
+    const createdMatch = content.match(/\*\*Created:\*\*\s*(.+)/);
+    const priorityMatch = content.match(/\*\*Priority:\*\*\s*(\w+)/);
+
+    // Extract completion summary if present
+    const summaryMatch = content.match(/## Completion Summary\n([\s\S]*?)(?=\n##|$)/);
+    const summary = summaryMatch
+      ? summaryMatch[1].replace(/<!--.*?-->/g, "").trim()
+      : "";
+
+    // Count completed acceptance criteria
+    const criteriaTotal = (content.match(/- \[[ x]\]/g) || []).length;
+    const criteriaComplete = (content.match(/- \[x\]/gi) || []).length;
+
+    return JSON.stringify({
+      exists: true,
+      project: projectPath,
+      title: titleMatch ? titleMatch[1] : "Unknown",
+      status: statusMatch ? statusMatch[1] : "unknown",
+      priority: priorityMatch ? priorityMatch[1] : "medium",
+      created: createdMatch ? createdMatch[1] : "",
+      acceptance_criteria: {
+        total: criteriaTotal,
+        completed: criteriaComplete
+      },
+      completion_summary: summary || null
+    }, null, 2);
+  } catch (err: any) {
+    return JSON.stringify({
+      exists: true,
+      error: err.message || String(err)
+    }, null, 2);
   }
 }
 
@@ -1500,11 +1750,17 @@ function listSdlcTools(): string {
       "check_outdated_deps - Find outdated packages",
       "generate_changelog - Create changelog entries",
       "analyze_git_history - Git commit analysis"
+    ],
+    "9. Agent Orchestration": [
+      "create_agent_task - Create a task for Antigravity IDE agent",
+      "spawn_antigravity - Open Antigravity IDE with a project",
+      "list_agent_tasks - List all agent tasks",
+      "get_task_status - Check task completion status"
     ]
   };
-  
+
   const totalTools = Object.values(phases).reduce((sum, tools) => sum + tools.length, 0);
-  
+
   return JSON.stringify({
     total_tools: totalTools,
     phases: phases
@@ -1519,9 +1775,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  
+
   let result: string;
-  
+
   // Type guard to ensure args is an object with string properties
   const getArg = (key: string, defaultValue: string = ""): string => {
     if (args && typeof args === "object" && key in args) {
@@ -1530,7 +1786,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
     return defaultValue;
   };
-  
+
   const getArgNumber = (key: string, defaultValue: number = 0): number => {
     if (args && typeof args === "object" && key in args) {
       const value = (args as any)[key];
@@ -1538,7 +1794,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
     return defaultValue;
   };
-  
+
   try {
     switch (name) {
       case "analyze_codebase":
@@ -1610,13 +1866,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "analyze_git_history":
         result = analyzeGitHistory(getArg("path", "."), getArgNumber("days", 30));
         break;
+      case "create_agent_task":
+        result = createAgentTask(
+          getArg("project_path", ""),
+          getArg("task_title", ""),
+          getArg("task_description", ""),
+          getArg("acceptance_criteria", ""),
+          getArg("priority", "medium")
+        );
+        break;
+      case "spawn_antigravity":
+        result = spawnAntigravity(
+          getArg("project_path", ""),
+          args && typeof args === "object" && "create_task" in args ? Boolean((args as any).create_task) : false,
+          getArg("task_description", "")
+        );
+        break;
+      case "list_agent_tasks":
+        result = listAgentTasks(getArg("project_path", ""), getArg("status_filter", "all"));
+        break;
+      case "get_task_status":
+        result = getTaskStatus(getArg("project_path", ""));
+        break;
       case "list_sdlc_tools":
         result = listSdlcTools();
         break;
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
-    
+
     return {
       content: [{ type: "text", text: result }]
     };
