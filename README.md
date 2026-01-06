@@ -105,7 +105,7 @@ Generate test cases for the UserService class
 
 ## Requirements
 
-- Gemini CLI v0.4.0 or later
+- Gemini CLI v0.20.0 or later
 - Node.js 18 or later
 
 ## Development
