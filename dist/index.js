@@ -13700,7 +13700,7 @@ var StdioServerTransport = class {
 };
 
 // src/index.ts
-import { execSync, spawn } from "child_process";
+import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 var server = new Server(
@@ -15272,64 +15272,42 @@ function getTaskStatus(projectPath) {
   }
 }
 function assignToAgent(task, projectPath = ".") {
-  const absolutePath = path.resolve(projectPath);
-  if (!fs.existsSync(absolutePath)) {
-    return JSON.stringify({
-      success: false,
-      error: `Project path not found: ${absolutePath}`
-    }, null, 2);
+  const resolvedPath = path.resolve(projectPath);
+  if (!fs.existsSync(resolvedPath)) {
+    return JSON.stringify({ error: `Path not found: ${resolvedPath}` }, null, 2);
   }
-  const taskResult = createAgentTask(
-    absolutePath,
-    "Agent Task",
-    task,
-    "",
-    "high"
-  );
-  const taskData = JSON.parse(taskResult);
-  if (!taskData.success) {
-    return taskResult;
+  const antigravityDir = path.join(resolvedPath, ".antigravity");
+  if (!fs.existsSync(antigravityDir)) {
+    fs.mkdirSync(antigravityDir, { recursive: true });
   }
-  try {
-    const script = `
-do shell script "open -a Antigravity '${absolutePath}'"
-delay 4
-tell application "System Events"
-    -- Clear any existing focus
-    key code 53
-    delay 0.5
-    -- Open agent conversation (Shift+Cmd+I)
-    keystroke "i" using {command down, shift down}
-    delay 2
-    -- Type task
-    keystroke "Read .antigravity/TASK.md and execute the task immediately"
-    delay 0.5
-    keystroke return
-end tell
+  const taskFile = path.join(antigravityDir, "TASK.md");
+  const title = task.length > 50 ? task.substring(0, 47) + "..." : task;
+  const content = `# Agent Task: ${title}
+
+**Status:** pending
+**Priority:** high
+**Created:** ${(/* @__PURE__ */ new Date()).toISOString()}
+**Assigned by:** Gemini CLI Orchestrator
+
+## Task
+${task}
+
+## Acceptance Criteria
+- [ ] Implementation complete
+- [ ] Tests pass
+
+## Completion Summary
+<!-- Update status to "completed" and fill this when done -->
 `;
-    const child = spawn("osascript", ["-e", script], { detached: true, stdio: "ignore" });
-    child.unref();
-    return JSON.stringify({
-      success: true,
-      task,
-      project_path: absolutePath,
-      task_file: taskData.task_file,
-      antigravity_opened: true,
-      agent_triggered: true,
-      message: "Task assigned, Antigravity launching, and agent will be triggered automatically"
-    }, null, 2);
-  } catch (err) {
-    return JSON.stringify({
-      success: false,
-      task,
-      project_path: absolutePath,
-      task_file: taskData.task_file,
-      antigravity_opened: false,
-      agent_triggered: false,
-      error: err.message || String(err),
-      message: "Task created but failed to open Antigravity or trigger agent"
-    }, null, 2);
-  }
+  fs.writeFileSync(taskFile, content);
+  return JSON.stringify({
+    success: true,
+    task,
+    project_path: resolvedPath,
+    task_file: taskFile,
+    next_step: "Now execute: Read .antigravity/TASK.md and complete the task autonomously",
+    message: "Task created. Use native agent mode to execute."
+  }, null, 2);
 }
 function listSdlcTools() {
   const phases = {
