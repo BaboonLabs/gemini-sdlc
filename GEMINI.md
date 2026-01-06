@@ -1,6 +1,6 @@
 # SDLC Command Center
 
-A comprehensive MCP server providing 22 tools for automating the full software development lifecycle.
+A comprehensive MCP server providing 26 tools for automating the full software development lifecycle, including Antigravity IDE agent orchestration.
 
 ## When to Use This Extension
 
@@ -11,6 +11,28 @@ Use the SDLC tools when the user needs to:
 - Set up CI/CD pipelines
 - Create Dockerfiles or deployment configs
 - Check code quality or dependencies
+- **Assign tasks to Antigravity IDE agents**
+
+---
+
+## ⚡ IMPORTANT: Antigravity vs Jules
+
+**Antigravity** is a LOCAL IDE agent. **Jules** is a CLOUD agent.
+
+| User Says | Use This Tool | From Server |
+|-----------|---------------|-------------|
+| "use Antigravity", "open in Antigravity", "Antigravity agent" | `spawn_antigravity` | gemini-sdlc |
+| "assign to agent", "have agent do", "send to local agent" | `assign_to_agent` | gemini-sdlc |
+| "check agent status", "agent progress" | `get_task_status` | gemini-sdlc |
+| "list agent tasks", "show tasks" | `list_agent_tasks` | gemini-sdlc |
+| "use Jules", "send to Jules", "Jules agent" | `start_new_jules_task` | julesServer |
+
+**Default behavior:**
+- If user says "agent" without specifying → Ask which: Antigravity (local) or Jules (cloud)
+- If user says "Antigravity" → Use gemini-sdlc tools
+- If user says "Jules" → Use julesServer
+
+---
 
 ## Tools by Phase
 
@@ -67,13 +89,38 @@ Use the SDLC tools when the user needs to:
 | `generate_changelog` | User needs changelog entry from a list of changes |
 | `analyze_git_history` | User wants to review recent commit history |
 
-### Phase 9: Agent Orchestration
+### Phase 9: Agent Orchestration (Antigravity)
 | Tool | Use When |
 |------|----------|
-| `create_agent_task` | User wants to assign a task to an autonomous IDE agent |
-| `spawn_antigravity` | User wants to open a project in the Antigravity IDE |
-| `list_agent_tasks` | User wants to see all active agent tasks |
-| `get_task_status` | User wants to check progress of a specific agent task |
+| `assign_to_agent` | User says "assign agent", "send to agent", "have agent do X" - creates task AND opens IDE |
+| `create_agent_task` | User wants to create a task file without opening IDE |
+| `spawn_antigravity` | User says "open in Antigravity", "launch Antigravity" |
+| `list_agent_tasks` | User says "list tasks", "show agent tasks", "what tasks are pending" |
+| `get_task_status` | User says "check status", "is agent done", "task progress" |
+
+---
+
+## Agent Orchestration Examples
+
+### Assign task to Antigravity (local IDE agent)
+```
+User: "Have Antigravity fix the login bug"
+→ Use assign_to_agent with task="fix the login bug"
+
+User: "Open this project in Antigravity"  
+→ Use spawn_antigravity with project_path="."
+
+User: "Check if the agent finished"
+→ Use get_task_status with project_path="."
+```
+
+### Assign task to Jules (cloud agent)
+```
+User: "Have Jules fix the login bug"
+→ Use start_new_jules_task (from julesServer)
+```
+
+---
 
 ## Usage Patterns
 
@@ -95,52 +142,36 @@ Use the SDLC tools when the user needs to:
 5. run_tests → verify implementation
 ```
 
-### Code Review / Quality Check
+### Delegate to Agent
 ```
-1. analyze_code_quality → find issues
-2. check_outdated_deps → check for updates
-3. analyze_git_history → review recent changes
-4. generate_changelog → document changes
+1. analyze_codebase → understand the project
+2. assign_to_agent → create task and open Antigravity
+3. get_task_status → check when complete
 ```
 
-### Deployment Preparation
-```
-1. run_tests → ensure tests pass
-2. generate_dockerfile → create/update container config
-3. generate_cloud_run_config → prepare deployment manifest
-4. generate_github_actions → automate the pipeline
-```
+---
 
 ## Tool Parameters Quick Reference
 
-### analyze_codebase
-- `path` (optional): Directory to analyze, defaults to "."
+### assign_to_agent (RECOMMENDED for agent work)
+- `task`: What the agent should do (e.g., "fix the login bug")
+- `project_path` (optional): Defaults to current directory
 
-### estimate_effort
-- `scope`: Description of work (e.g., "user authentication system")
-- `complexity`: "low", "medium", or "high"
+### spawn_antigravity
+- `project_path` (optional): Defaults to current directory
 
-### scaffold_component
-- `name`: Component name (e.g., "UserService")
-- `type`: "service", "controller", "model", or "route"
-- `language`: "typescript", "python", or "go"
+### get_task_status
+- `project_path` (optional): Defaults to current directory
 
-### generate_dockerfile
-- `language`: "node", "python", or "go"
-- `port` (optional): Port to expose, defaults to 8080
+### list_agent_tasks
+- `project_path` (optional): Filter to specific project
+- `status_filter` (optional): "all", "pending", "completed"
 
-### generate_github_actions
-- `language`: "node", "python", or "go"
-- `include_deploy` (optional): Include Cloud Run deployment step
-
-### generate_test_cases
-- `function_name`: Name of function to test
-- `function_description`: What the function does
-- `language`: "typescript", "python", or "go"
+---
 
 ## Tips
 
 - Start with `list_sdlc_tools` to see all available tools
 - Use `analyze_codebase` first to understand unfamiliar projects
-- Combine tools in sequence for complete workflows
-- Generated code is a starting point - review and customize as needed
+- For quick agent delegation: just say "assign agent: <task>"
+- Check agent progress with "check agent status"
